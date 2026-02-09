@@ -75,22 +75,25 @@ public class OrderItemsReserver
         var document = JsonDocument.Parse(body);
         var root = document.RootElement;
 
-        var orderId = root.GetProperty("orderId").GetString();
+            // basketId exists in the payload
+        var basketId = root.GetProperty("basketId").GetInt32();
 
-        if (string.IsNullOrWhiteSpace(orderId))
-        {
-            throw new InvalidOperationException("orderId is missing in the message payload.");
-        }
+        // map basketId → orderId
+        var orderId = basketId.ToString();
 
         var cosmosItem = new
         {
-            id = orderId,
+            id = orderId,        // REQUIRED by Cosmos DB
             orderId = orderId,
+            basketId = basketId,
             payload = root,
             createdAt = DateTime.UtcNow
         };
 
-        await container.CreateItemAsync(cosmosItem, new PartitionKey(orderId));
+        await container.CreateItemAsync(
+            cosmosItem,
+            new PartitionKey(orderId)
+        );
 
         _logger.LogInformation("Order {OrderId} saved to Cosmos DB", orderId);
 
