@@ -19,7 +19,7 @@ public class DeliveryOrderProcessor
 
     [Function(nameof(DeliveryOrderProcessor))]
     public async Task Run(
-        [ServiceBusTrigger("myqueue", Connection = "ServiceBusConnection")]
+        [ServiceBusTrigger("order-reserve-requests", Connection = "ServiceBusConnection")]
         ServiceBusReceivedMessage message,
         ServiceBusMessageActions messageActions)
     {
