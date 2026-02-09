@@ -60,43 +60,6 @@ public class OrderItemsReserver
         });
 
         _logger.LogInformation("Uploaded JSON to blob {BlobName} in container {ContainerName}", blobName, containerName);
-       var cosmosConnection = Environment.GetEnvironmentVariable("CosmosDbConnection");
-       var cosmosDatabase = Environment.GetEnvironmentVariable("CosmosDbDatabase");
-       var cosmosContainer = Environment.GetEnvironmentVariable("CosmosDbContainer");
-
-        if (string.IsNullOrWhiteSpace(cosmosConnection))
-        {
-            throw new InvalidOperationException("CosmosDbConnection is not configured.");
-        }
-
-        using var cosmosClient = new CosmosClient(cosmosConnection);
-        var container = cosmosClient.GetContainer(cosmosDatabase, cosmosContainer);
-
-        var document = JsonDocument.Parse(body);
-        var root = document.RootElement;
-
-            // basketId exists in the payload
-        var basketId = root.GetProperty("basketId").GetInt32();
-
-        // map basketId → orderId
-        var orderId = basketId.ToString();
-
-        var cosmosItem = new
-        {
-            id = orderId,        // REQUIRED by Cosmos DB
-            orderId = orderId,
-            basketId = basketId,
-            payload = root,
-            createdAt = DateTime.UtcNow
-        };
-
-        await container.CreateItemAsync(
-            cosmosItem,
-            new PartitionKey(orderId)
-        );
-
-        _logger.LogInformation("Order {OrderId} saved to Cosmos DB", orderId);
-
 
     }
 }
