@@ -6,8 +6,10 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Extensions.ServiceBus;
+using Microsoft.Azure.Cosmos;
+using System.Text.Json;
+
 
 
 namespace Company.Function;
@@ -58,5 +60,41 @@ public class OrderItemsReserver
         });
 
         _logger.LogInformation("Uploaded JSON to blob {BlobName} in container {ContainerName}", blobName, containerName);
+       var cosmosConnection = Environment.GetEnvironmentVariable("CosmosDbConnection");
+       var cosmosDatabase = Environment.GetEnvironmentVariable("CosmosDbDatabase");
+       var cosmosContainer = Environment.GetEnvironmentVariable("CosmosDbContainer");
+
+        if (string.IsNullOrWhiteSpace(cosmosConnection))
+        {
+            throw new InvalidOperationException("CosmosDbConnection is not configured.");
+        }
+
+        using var cosmosClient = new CosmosClient(cosmosConnection);
+        var container = cosmosClient.GetContainer(cosmosDatabase, cosmosContainer);
+
+        var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+
+        var orderId = root.GetProperty("orderId").GetString();
+
+        if (string.IsNullOrWhiteSpace(orderId))
+        {
+            throw new InvalidOperationException("orderId is missing in the message payload.");
+        }
+
+        var cosmosItem = new
+        {
+            id = orderId,
+            orderId = orderId,
+            payload = root,
+            createdAt = DateTime.UtcNow
+        };
+
+        await container.CreateItemAsync(cosmosItem, new PartitionKey(orderId));
+
+        _logger.LogInformation("Order {OrderId} saved to Cosmos DB", orderId);
+
+
     }
 }
+
